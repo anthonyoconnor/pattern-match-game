@@ -1,16 +1,10 @@
-// Check that the circuit works correctly.
-// Each button will turn on one LED.
-
-int ledToMatch = 0;
 int delayBetweenBlinks = 500;
 int delayForPickBlink = 600;
-int lastLed = 0;
 
 int led1 = 12;
 int led2 = 11;
 int led3 = 10;
 int led4 = 9;
-
 int leds[] = {led1, led2, led3, led4};
 byte numberOfLeds = 4;
 
@@ -21,7 +15,12 @@ int button4 = 5;
 int buttons[] = {button1, button2, button3, button4};
 byte numberOfButtons = 4;
 
+
+// Level 1 game variables.
 bool gameRunning;
+
+int ledToMatch = 0;
+int lastLed = 0;
 
 void setup()
 {
@@ -83,7 +82,7 @@ void level1GameLoop()
 
   if (button1Pressed + button2Pressed + button3Pressed + button4Pressed > 1)
   {
-    //too many buttons pressed.
+    // Too many buttons pressed so fail the game.
     showFailedEndGame();
     initLevel1Game();
     startLevel1Game();
