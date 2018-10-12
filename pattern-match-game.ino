@@ -26,7 +26,7 @@ bool gameRunning;
 void setup()
 {
   Serial.begin(9600);
-  randomSeed(analogRead(0));
+  setRandomSeed();
 
   for (byte i = 0; i < numberOfLeds; i++)
   {
@@ -45,6 +45,16 @@ void setup()
 void loop()
 {
   level1GameLoop();
+}
+
+void setRandomSeed()
+{
+  int r = 0;
+  for (int i = A0; i <= A7; i++)
+  {
+    r += analogRead(i);
+  }
+  randomSeed(r);
 }
 
 void level1GameLoop()
@@ -68,7 +78,7 @@ void level1GameLoop()
   {
     turnOnIfPressed(buttons[i], leds[i]);
   }
-  
+
   waitForAllNotPressed();
 
   if (button1Pressed + button2Pressed + button3Pressed + button4Pressed > 1)
