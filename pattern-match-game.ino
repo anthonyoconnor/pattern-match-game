@@ -11,10 +11,15 @@ int led2 = 11;
 int led3 = 10;
 int led4 = 9;
 
+int leds[] = {led1, led2, led3, led4};
+byte numberOfLeds = 4;
+
 int button1 = 2;
 int button2 = 3;
 int button3 = 4;
 int button4 = 5;
+int buttons[] = {button1, button2, button3, button4};
+byte numberOfButtons = 4;
 
 bool gameRunning;
 
@@ -22,15 +27,16 @@ void setup()
 {
   Serial.begin(9600);
   randomSeed(analogRead(0));
-  pinMode(led1, OUTPUT);
-  pinMode(led2, OUTPUT);
-  pinMode(led3, OUTPUT);
-  pinMode(led4, OUTPUT);
 
-  pinMode(button1, INPUT);
-  pinMode(button2, INPUT);
-  pinMode(button3, INPUT);
-  pinMode(button4, INPUT);
+  for (byte i = 0; i < numberOfLeds; i++)
+  {
+    pinMode(leds[i], OUTPUT);
+  }
+
+  for (byte i = 0; i < numberOfButtons; i++)
+  {
+    pinMode(buttons[i], INPUT);
+  }
 
   initLevel1Game();
   startLevel1Game();
@@ -58,11 +64,11 @@ void level1GameLoop()
     return;
   }
 
-  turnOnIfPressed(button1, led1);
-  turnOnIfPressed(button2, led2);
-  turnOnIfPressed(button3, led3);
-  turnOnIfPressed(button4, led4);
-
+  for (byte i = 0; i < numberOfLeds; i++)
+  {
+    turnOnIfPressed(buttons[i], leds[i]);
+  }
+  
   waitForAllNotPressed();
 
   if (button1Pressed + button2Pressed + button3Pressed + button4Pressed > 1)
@@ -122,30 +128,10 @@ void pickNextLed()
   delay(500);
   do
   {
-    int rand = random(1, 5);
+    int rand = random(0, 4);
 
-    // The lED pins may not be sequential in the final version
-    // so did not use random(led4, led1+1) here since that only
-    // works if they are always sequential.
-    if (rand == 1)
-    {
-      ledToMatch = led1;
-    }
+    ledToMatch = leds[rand];
 
-    if (rand == 2)
-    {
-      ledToMatch = led2;
-    }
-
-    if (rand == 3)
-    {
-      ledToMatch = led3;
-    }
-
-    if (rand == 4)
-    {
-      ledToMatch = led4;
-    }
   } while (ledToMatch == lastLed);
 
   lastLed = ledToMatch;
@@ -172,14 +158,8 @@ void initLevel1Game()
 
   turnOffAllLeds();
   delay(delayBetweenBlinks);
-  turnOnAllLeds();
-  delay(delayBetweenBlinks);
-  turnOffAllLeds();
-  delay(delayBetweenBlinks);
-  turnOnAllLeds();
-  delay(delayBetweenBlinks);
-  turnOffAllLeds();
-  delay(delayBetweenBlinks);
+
+  flashAllLeds();
 }
 
 void showFailedEndGame()
@@ -187,6 +167,13 @@ void showFailedEndGame()
   Serial.println("Game over");
   turnOffAllLeds();
 
+  flashAllLeds();
+
+  gameRunning = false;
+}
+
+void flashAllLeds()
+{
   for (byte i = 0; i < 3; i++)
   {
     turnOnAllLeds();
@@ -194,24 +181,22 @@ void showFailedEndGame()
     turnOffAllLeds();
     delay(delayBetweenBlinks);
   }
-
-  gameRunning = false;
 }
 
 void turnOnAllLeds()
 {
-  turnOnLed(led1);
-  turnOnLed(led2);
-  turnOnLed(led3);
-  turnOnLed(led4);
+  for (byte i = 0; i < numberOfLeds; i++)
+  {
+    turnOnLed(leds[i]);
+  }
 }
 
 void turnOffAllLeds()
 {
-  turnOffLed(led1);
-  turnOffLed(led2);
-  turnOffLed(led3);
-  turnOffLed(led4);
+  for (byte i = 0; i < numberOfLeds; i++)
+  {
+    turnOffLed(leds[i]);
+  }
 }
 
 void turnOnLed(int led)
