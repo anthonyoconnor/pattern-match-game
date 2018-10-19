@@ -15,11 +15,18 @@ int button4 = 5;
 int buttons[] = {button1, button2, button3, button4};
 byte numberOfButtons = 4;
 
+const int maxSequence = 10;
+int ledSequence[maxSequence];
+int buttonSequence[maxSequence];
+int currentLevel;
+const int maxSteps = 3;
+int currentStep;
 
-// Level 1 game variables.
+int difficultyButton = 6;
+int difficulty = 0;
+
 bool gameRunning;
 
-int ledToMatch = 0;
 int lastLed = 0;
 
 void setup()
@@ -36,14 +43,40 @@ void setup()
   {
     pinMode(buttons[i], INPUT);
   }
-
-  initLevel1Game();
-  startLevel1Game();
 }
 
 void loop()
 {
-  level1GameLoop();
+  if (difficulty == 2 && checkPressed(difficultyButton) || difficulty == 1 && !checkPressed(difficultyButton))
+  {
+    gameRunning = false;
+  }
+
+  if (!gameRunning)
+  {
+    if (checkPressed(difficultyButton))
+    {
+      difficulty = 1;
+    }
+    else
+    {
+      difficulty = 2;
+    }
+
+    initGame();
+    startGame();
+  }
+
+  gameLoop();
+}
+
+void resetSequence()
+{
+  for (byte i = 0; i < maxSequence; i++)
+  {
+    ledSequence[i] = 0;
+    buttonSequence[i] = 0;
+  }
 }
 
 void setRandomSeed()
@@ -56,51 +89,110 @@ void setRandomSeed()
   randomSeed(r);
 }
 
-void level1GameLoop()
+void gameLoop()
 {
   if (!gameRunning)
   {
     return;
   }
 
-  bool button1Pressed = checkPressed(button1);
-  bool button2Pressed = checkPressed(button2);
-  bool button3Pressed = checkPressed(button3);
-  bool button4Pressed = checkPressed(button4);
+  boolean sequenceFull = false;
 
-  if (button1Pressed + button2Pressed + button3Pressed + button4Pressed == 0)
+  int sequencePressed = 0;
+
+  while (sequencePressed < currentLevel)
   {
+    bool button1Pressed = checkPressed(button1);
+    bool button2Pressed = checkPressed(button2);
+    bool button3Pressed = checkPressed(button3);
+    bool button4Pressed = checkPressed(button4);
+
+    if (button1Pressed + button2Pressed + button3Pressed + button4Pressed == 0)
+    {
+      continue;
+    }
+
+    for (byte i = 0; i < numberOfLeds; i++)
+    {
+      boolean pressed = turnOnIfPressed(buttons[i], leds[i]);
+      if (pressed)
+      {
+        buttonSequence[sequencePressed] = i;
+      }
+    }
+
+    sequencePressed++;
+
+    waitForAllNotPressed();
+
+    if (button1Pressed + button2Pressed + button3Pressed + button4Pressed > 1)
+    {
+      // More than one button was pressed at a time so end game.
+      showFailedEndGame();
+      gameRunning = false;
+      return;
+    }
+  }
+
+  printSequences();
+
+  if (!verifySequences())
+  {
+    showFailedEndGame();
+    gameRunning = false;
     return;
   }
 
-  for (byte i = 0; i < numberOfLeds; i++)
+  if (checkForVictory())
   {
-    turnOnIfPressed(buttons[i], leds[i]);
-  }
+    showSuccessEndGame();
 
-  waitForAllNotPressed();
-
-  if (button1Pressed + button2Pressed + button3Pressed + button4Pressed > 1)
-  {
-    // Too many buttons pressed so fail the game.
-    showFailedEndGame();
-    initLevel1Game();
-    startLevel1Game();
+    gameRunning = false;
   }
   else
   {
+    fillNextSequence();
+    showNextSequence();
+  }
+}
 
-    if ((ledToMatch == led1 && button1Pressed) || (ledToMatch == led2 && button2Pressed) || (ledToMatch == led3 && button3Pressed) || (ledToMatch == led4 && button4Pressed))
+boolean verifySequences()
+{
+  for (byte i = 0; i < maxSequence; i++)
+  {
+    if (buttonSequence[i] != ledSequence[i])
     {
-      pickNextLed();
-    }
-    else
-    {
-      showFailedEndGame();
-      initLevel1Game();
-      startLevel1Game();
+      return false;
     }
   }
+
+  return true;
+}
+
+boolean checkForVictory()
+{
+  return (currentLevel == maxSequence && currentStep == maxSteps);
+}
+
+void printSequences()
+{
+  Serial.println("Button Sequence:");
+
+  for (byte i = 0; i < maxSequence; i++)
+  {
+    Serial.print(buttonSequence[i]);
+    Serial.print(" ");
+  }
+
+  Serial.println("LED Sequence:");
+
+  for (byte i = 0; i < maxSequence; i++)
+  {
+    Serial.print(ledSequence[i]);
+    Serial.print(" ");
+  }
+
+  Serial.println(" ");
 }
 
 void waitForAllNotPressed()
@@ -122,39 +214,74 @@ void waitForAllNotPressed()
       delay(250);
     }
   }
-}
 
-void showNextLed()
-{
-  turnOnLed(ledToMatch);
-  delay(delayForPickBlink);
-  turnOffLed(ledToMatch);
-}
-
-void pickNextLed()
-{
   turnOffAllLeds();
-  delay(500);
+}
+
+void startGame()
+{
+  Serial.println("Starting game");
+  resetSequence();
+  currentLevel = 1;
+  currentStep = 0;
+
+  fillNextSequence();
+  showNextSequence();
+  gameRunning = true;
+}
+
+int getNextLed()
+{
+  int ledToMatch = 0;
   do
   {
     int rand = random(0, 4);
 
-    ledToMatch = leds[rand];
+    ledToMatch = rand;
 
   } while (ledToMatch == lastLed);
 
   lastLed = ledToMatch;
-  showNextLed();
+
+  return ledToMatch;
 }
 
-void startLevel1Game()
+void fillNextSequence()
 {
-  Serial.println("Starting game");
-  pickNextLed();
-  gameRunning = true;
+  currentStep++;
+  Serial.println(currentStep);
+
+  if (currentStep > maxSteps)
+  {
+    if (difficulty != 1)
+    {
+      currentLevel++;
+    }
+
+    currentStep = 1;
+  }
+
+  for (byte i = 0; i < currentLevel; i++)
+  {
+    ledSequence[i] = getNextLed();
+  }
 }
 
-void initLevel1Game()
+void showNextSequence()
+{
+  turnOffAllLeds();
+  delay(delayBetweenBlinks);
+
+  for (byte i = 0; i < currentLevel; i++)
+  {
+    turnOnLed(leds[ledSequence[i]]);
+    delay(delayForPickBlink);
+    turnOffLed(leds[ledSequence[i]]);
+    delay(delayBetweenBlinks);
+  }
+}
+
+void initGame()
 {
   turnOnLed(led1);
   delay(delayBetweenBlinks);
@@ -173,12 +300,21 @@ void initLevel1Game()
 
 void showFailedEndGame()
 {
-  Serial.println("Game over");
+  Serial.println("Game over - Failed");
   turnOffAllLeds();
 
   flashAllLeds();
+}
 
-  gameRunning = false;
+void showSuccessEndGame()
+{
+  Serial.println("Game over - Success");
+  turnOffAllLeds();
+
+  turnOnAllLeds();
+  delay(5000);
+  turnOffAllLeds();
+  flashAllLeds();
 }
 
 void flashAllLeds()
@@ -225,16 +361,18 @@ bool checkPressed(int button)
   return buttonStatus == HIGH;
 }
 
-void turnOnIfPressed(int button, int led)
+bool turnOnIfPressed(int button, int led)
 {
   int buttonStatus = digitalRead(button);
 
   if (buttonStatus == HIGH)
   {
     digitalWrite(led, HIGH);
+    return true;
   }
   else
   {
     digitalWrite(led, LOW);
+    return false;
   }
 }
